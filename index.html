@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GPS Tracker Dashboard</title>
+  <!-- ✅ URLs corregidas (sin espacios al final) -->
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f7fa;
+    }
+    #map {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 100%;
+    }
+    .controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      z-index: 1000;
+    }
+    .controls h2 {
+      margin-top: 0;
+      color: #0066cc;
+    }
+    .btn {
+      background: #0066cc;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    .btn:hover {
+      background: #0052a3;
+    }
+    .info {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #666;
+    }
+    .marker-popup {
+      max-width: 200px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="controls">
+    <h2>📍 GPS Tracker Dashboard</h2>
+    
+    <!-- Selector de usuario -->
+    <div style="margin-bottom: 10px;">
+      <label for="userSelect">Usuario:</label>
+      <select id="userSelect" style="padding: 5px; margin-left: 10px; width: 150px;">
+        <option value="test123">test123</option>
+      </select>
+      <button class="btn" id="addUserBtn" style="margin-left: 5px; padding: 4px 8px;">+</button>
+    </div>
+  
+    <button class="btn" id="refreshBtn">🔄 Recargar Ubicaciones</button>
+    <button class="btn" id="clearBtn">🗑️ Limpiar Marcadores</button>
+    <div class="info" id="status">Cargando...</div>
+  </div>
+
+  <!-- ✅ URLs corregidas (sin espacios al final) -->
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+  <script>
+    // 🔑 Tu token de Mapbox
+    mapboxgl.accessToken = 'pk.eyJ1IjoibWF0ZW9idXN0aWxsb3MiLCJhIjoiY21tMnIwd2c4MDl4cjJ1b294ZjZtcGgyZSJ9.qeAIBXkLLNmIg3Td7wXc_g';
+
+    // 🔗 Tu backend Render
+    const API_URL = 'https://gps-backend-1-9mn6.onrender.com';
+
+    // Variables globales
+    let map;
+    let markers = [];
+    let currentUserId = 'test123';
+
+    // ✅ Función initMap DEFINIDA
+    function initMap() {
+      map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [-99.1332, 19.4326], // Ciudad de México
+        zoom: 12,
+        attributionControl: false
+      });
+
+      // Agregar controles
+      map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      map.addControl(new mapboxgl.ScaleControl({ maxWidth: 100 }), 'bottom-left');
+
+      // Cargar ubicaciones al iniciar
+      loadLocations();
+    }
+
+    // Cargar lista de usuarios (opcional)
+    async function loadUsers() {
+      try {
+        const response = await fetch(`${API_URL}/api/users`);
+        if (response.ok) {
+          const users = await response.json();
+          const select = document.getElementById('userSelect');
+          select.innerHTML = '';
+          users.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.id;
+            option.textContent = user.id;
+            select.appendChild(option);
+          });
+          currentUserId = users[0]?.id || 'test123';
+        }
+      } catch (error) {
+        console.log('No se pudo cargar lista de usuarios:', error);
+      }
+    }
+
+    // Cargar ubicaciones del usuario seleccionado
+    async function loadLocations() {
+      const userId = document.getElementById('userSelect').value;
+      currentUserId = userId;
+      
+      document.getElementById('status').textContent = `Cargando ubicaciones de ${userId}...`;
+      
+      try {
+        const response = await fetch(`${API_URL}/api/location/latest/${userId}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const data = await response.json();
+        if (!data.success) throw new Error('No se encontró ubicación');
+
+        clearMarkers();
+
+        const loc = data.data;
+        const popup = new mapboxgl.Popup({ offset: 25 })
+          .setHTML(`
+            <div class="marker-popup">
+              <strong>Usuario:</strong> ${loc.user_id}<br/>
+              <strong>Lat:</strong> ${parseFloat(loc.latitude).toFixed(6)}<br/>
+              <strong>Lng:</strong> ${parseFloat(loc.longitude).toFixed(6)}<br/>
+              <strong>Precisión:</strong> ${loc.accuracy || 'N/A'} m<br/>
+              <strong>Velocidad:</strong> ${loc.speed ? (parseFloat(loc.speed) * 3.6).toFixed(1) : 'N/A'} km/h<br/>
+              <strong>Hora:</strong> ${new Date(loc.timestamp).toLocaleString()}
+            </div>
+          `);
+
+        const marker = new mapboxgl.Marker({ color: '#0066cc' })
+          .setLngLat([parseFloat(loc.longitude), parseFloat(loc.latitude)])
+          .setPopup(popup)
+          .addTo(map);
+
+        markers.push(marker);
+
+        map.flyTo({
+          center: [parseFloat(loc.longitude), parseFloat(loc.latitude)],
+          zoom: 15,
+          duration: 1000
+        });
+
+        document.getElementById('status').textContent = `✅ Última ubicación de ${userId}: ${new Date(loc.timestamp).toLocaleTimeString()}`;
+      } catch (error) {
+        console.error('Error cargando ubicaciones:', error);
+        document.getElementById('status').textContent = `❌ Error: ${error.message}`;
+      }
+    }
+
+    // Limpiar marcadores
+    function clearMarkers() {
+      markers.forEach(marker => marker.remove());
+      markers = [];
+    }
+
+    // Agregar nuevo usuario
+    function addUser() {
+      const userId = prompt('Ingresa el ID del usuario:');
+      if (userId && userId.trim()) {
+        const select = document.getElementById('userSelect');
+        const option = document.createElement('option');
+        option.value = userId.trim();
+        option.textContent = userId.trim();
+        select.appendChild(option);
+        select.value = userId.trim();
+        loadLocations();
+      }
+    }
+
+    // Event listeners
+    document.getElementById('refreshBtn').addEventListener('click', loadLocations);
+    document.getElementById('clearBtn').addEventListener('click', clearMarkers);
+    document.getElementById('userSelect').addEventListener('change', loadLocations);
+    document.getElementById('addUserBtn').addEventListener('click', addUser);
+
+    // Iniciar cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', initMap);
+  </script>
+</body>
+</html>
