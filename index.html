@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GPS Tracker Dashboard</title>
-  <!-- ✅ URLs corregidas (sin espacios al final) -->
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
   <style>
     body {
@@ -59,9 +58,8 @@
 <body>
   <div id="map"></div>
   <div class="controls">
-    <h2>📍 GPS Tracker Dashboard</h2>
+    <h2>GPS Tracker Dashboard</h2>
     
-    <!-- Selector de usuario -->
     <div style="margin-bottom: 10px;">
       <label for="userSelect">Usuario:</label>
       <select id="userSelect" style="padding: 5px; margin-left: 10px; width: 150px;">
@@ -70,66 +68,41 @@
       <button class="btn" id="addUserBtn" style="margin-left: 5px; padding: 4px 8px;">+</button>
     </div>
   
-    <button class="btn" id="refreshBtn">🔄 Recargar Ubicaciones</button>
-    <button class="btn" id="clearBtn">🗑️ Limpiar Marcadores</button>
+    <button class="btn" id="refreshBtn">Recargar Ubicaciones</button>
+    <button class="btn" id="clearBtn">Limpiar Marcadores</button>
     <div class="info" id="status">Cargando...</div>
   </div>
 
-  <!-- ✅ URLs corregidas (sin espacios al final) -->
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
   <script>
-    // 🔑 Tu token de Mapbox
     mapboxgl.accessToken = 'pk.eyJ1IjoibWF0ZW9idXN0aWxsb3MiLCJhIjoiY21tMnIwd2c4MDl4cjJ1b294ZjZtcGgyZSJ9.qeAIBXkLLNmIg3Td7wXc_g';
 
-    // 🔗 Tu backend Render
     const API_URL = 'https://gps-backend-1-9mn6.onrender.com';
 
-    // Variables globales
     let map;
     let markers = [];
     let currentUserId = 'test123';
+    let autoRefreshInterval;
 
-    // ✅ Función initMap DEFINIDA
-    /*function initMap() {
+    function initMap() {
       map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/mapbox/streets-v12',
-        center: [-16.489689, -68.119293], // Ciudad de la paz
+        center: [-16.489689, -68.119293],
         zoom: 12,
         attributionControl: false
       });
 
-      // Agregar controles
       map.addControl(new mapboxgl.NavigationControl(), 'top-right');
       map.addControl(new mapboxgl.ScaleControl({ maxWidth: 100 }), 'bottom-left');
 
-      // Cargar ubicaciones al iniciar
       loadLocations();
-    }*/
 
-    function initMap() {
-  map = new mapboxgl.Map({
-    container: 'map',
-    style: 'mapbox://styles/mapbox/streets-v12',
-    center: [-16.489689, -68.119293],
-    zoom: 12,
-    attributionControl: false
-  });
+      autoRefreshInterval = setInterval(() => {
+        loadLocations();
+      }, 3000);
+    }
 
-  map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-  map.addControl(new mapboxgl.ScaleControl({ maxWidth: 100 }), 'bottom-left');
-
-  // 🔹 Cargar primera vez
-  loadLocations();
-
-  // 🔹 Auto actualización cada 3 segundos
-  autoRefreshInterval = setInterval(() => {
-    loadLocations();
-  }, 3000); // 3000 ms = 3 segundos
-}
-
-
-    // Cargar lista de usuarios (opcional)
     async function loadUsers() {
       try {
         const response = await fetch(`${API_URL}/api/users`);
@@ -150,7 +123,6 @@
       }
     }
 
-    // Cargar ubicaciones del usuario seleccionado
     async function loadLocations() {
       const userId = document.getElementById('userSelect').value;
       currentUserId = userId;
@@ -192,20 +164,18 @@
           duration: 1000
         });
 
-        document.getElementById('status').textContent = `✅ Última ubicación de ${userId}: ${new Date(loc.timestamp).toLocaleTimeString()}`;
+        document.getElementById('status').textContent = `Última ubicación de ${userId}: ${new Date(loc.timestamp).toLocaleTimeString()}`;
       } catch (error) {
         console.error('Error cargando ubicaciones:', error);
-        document.getElementById('status').textContent = `❌ Error: ${error.message}`;
+        document.getElementById('status').textContent = `Error: ${error.message}`;
       }
     }
 
-    // Limpiar marcadores
     function clearMarkers() {
       markers.forEach(marker => marker.remove());
       markers = [];
     }
 
-    // Agregar nuevo usuario
     function addUser() {
       const userId = prompt('Ingresa el ID del usuario:');
       if (userId && userId.trim()) {
@@ -219,28 +189,22 @@
       }
     }
 
-    // Event listeners
     document.getElementById('refreshBtn').addEventListener('click', loadLocations);
     document.getElementById('clearBtn').addEventListener('click', clearMarkers);
-    //document.getElementById('userSelect').addEventListener('change', loadLocations);
     document.getElementById('addUserBtn').addEventListener('click', addUser);
+    
     document.getElementById('userSelect').addEventListener('change', () => {
-  loadLocations();
+      loadLocations();
 
-  // Reiniciar intervalo
-  if (autoRefreshInterval) {
-    clearInterval(autoRefreshInterval);
-  }
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+      }
 
-  autoRefreshInterval = setInterval(() => {
-    loadLocations();
-  }, 10000);
-});
+      autoRefreshInterval = setInterval(() => {
+        loadLocations();
+      }, 10000);
+    });
 
-
-
-
-    // Iniciar cuando el DOM esté listo
     document.addEventListener('DOMContentLoaded', initMap);
   </script>
 </body>
